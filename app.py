@@ -27,10 +27,47 @@ def verify_webhook():
 def receive_webhook():
     data = request.get_json(silent=True) or {}
 
-    # For now, just print the incoming event.
-    # We'll add WhatsApp message processing next.
-    print("Incoming webhook:", data, flush=True)
+    try:
+        # Meta sends WhatsApp events inside entry -> changes -> value
+        entry = data.get("entry", [])
 
+        for entry_item in entry:
+            for change in entry_item.get("changes", []):
+                value = change.get("value", {})
+
+                messages = value.get("messages", [])
+                contacts = value.get("contacts", [])
+
+                # Name supplied by WhatsApp, when available
+                name = "Unknown"
+                if contacts:
+                    name = contacts[0].get("profile", {}).get("name", "Unknown")
+
+                for message in messages:
+                    sender = message.get("from", "Unknown")
+                    message_type = message.get("type")
+
+                    # We only process text messages for now
+                    if message_type == "text":
+                        text = message.get("text", {}).get("body", "")
+
+                        print("----- WHATSAPP MESSAGE -----", flush=True)
+                        print(f"Name: {name}", flush=True)
+                        print(f"From: {sender}", flush=True)
+                        print(f"Message: {text}", flush=True)
+                        print("----------------------------", flush=True)
+
+                    else:
+                        print("----- WHATSAPP EVENT -----", flush=True)
+                        print(f"Name: {name}", flush=True)
+                        print(f"From: {sender}", flush=True)
+                        print(f"Message type: {message_type}", flush=True)
+                        print("---------------------------", flush=True)
+
+    except Exception as e:
+        print(f"Error processing webhook: {e}", flush=True)
+
+    # Always acknowledge the webhook quickly
     return "EVENT_RECEIVED", 200
 
 
